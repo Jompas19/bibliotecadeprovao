@@ -182,7 +182,54 @@ button,input,select{font:inherit}.hidden{display:none!important}.muted{color:var
   function updateThemeButton(){const b=document.getElementById('themeToggle');if(!b)return;const dark=theme==='dark';b.innerHTML=`${dark?'☀':'☾'} <span class="label-hide">${dark?'Modo claro':'Modo escuro'}</span>`;b.setAttribute('aria-label',dark?'Ativar modo claro':'Ativar modo escuro');b.title=dark?'Ativar modo claro':'Ativar modo escuro';}
   async function toggleTheme(){applyTheme(theme==='dark'?'light':'dark');await dbSet('theme',theme);} window.toggleTheme=toggleTheme;
 
-  function header(){const dark=theme==='dark';return `<header class="topbar"><div class="topbar-inner"><div class="brand" role="button" tabindex="0" onclick="goHome()"><div class="brand-mark">Q</div><div><h1>Biblioteca de Provões</h1><small>Questões interativas • progresso salvo neste navegador</small></div></div><div class="toolbar"><button id="themeToggle" class="btn small" onclick="toggleTheme()" aria-label="${dark?'Ativar modo claro':'Ativar modo escuro'}" title="${dark?'Ativar modo claro':'Ativar modo escuro'}">${dark?'☀':'☾'} <span class="label-hide">${dark?'Modo claro':'Modo escuro'}</span></button><button class="btn small" onclick="exportBackup()">↥ <span class="label-hide">Backup</span></button><button class="btn small" onclick="document.getElementById('importBackupInput').click()">↧ <span class="label-hide">Restaurar</span></button></div></div></header>`;}
+  async function clearLocalUserData(){
+    progress={};
+    await dbSet('progress',{});
+    await dbSet('customExams',[]);
+    for(const k of await dbKeys()){
+      const s=String(k);
+      if(s.startsWith('note:')) await dbSet(s,'');
+      if(s.startsWith('noteUpdated:')) await dbSet(s,0);
+    }
+  }
+
+  function requestFullReset(){
+    document.getElementById('resetAllModal')?.remove();
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal-bg" id="resetAllModal"><div class="modal">
+      <h3>Restaurar e começar do zero?</h3>
+      <p>Isso apagará suas respostas, categorias, gabaritos personalizados e anotações. Se este dispositivo estiver sincronizado, a restauração também será aplicada ao seu ID na nuvem e aos demais dispositivos.</p>
+      <p><strong>Essa ação não pode ser desfeita.</strong></p>
+      <div id="resetAllError" style="color:var(--bad);font-size:13px;min-height:18px"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeResetAllModal()">Cancelar</button>
+        <button class="btn danger" id="confirmResetAllBtn" onclick="confirmFullReset()">Sim, apagar tudo</button>
+      </div>
+    </div></div>`);
+  } window.requestFullReset=requestFullReset;
+
+  function closeResetAllModal(){document.getElementById('resetAllModal')?.remove();} window.closeResetAllModal=closeResetAllModal;
+
+  async function confirmFullReset(){
+    const b=document.getElementById('confirmResetAllBtn');
+    const e=document.getElementById('resetAllError');
+    if(b){b.disabled=true;b.textContent='Apagando…';}
+    if(e)e.textContent='';
+    try{
+      if(window.parent!==window && typeof window.parent.cloudSyncResetAll==='function'){
+        await window.parent.cloudSyncResetAll();
+        return;
+      }
+      await clearLocalUserData();
+      closeResetAllModal();
+      location.reload();
+    }catch(err){
+      if(e)e.textContent=err?.message||'Não foi possível restaurar agora.';
+      if(b){b.disabled=false;b.textContent='Sim, apagar tudo';}
+    }
+  } window.confirmFullReset=confirmFullReset;
+
+
+  function header(){const dark=theme==='dark';return `<header class="topbar"><div class="topbar-inner"><div class="brand" role="button" tabindex="0" onclick="goHome()"><div class="brand-mark">Q</div><div><h1>Biblioteca de Provões</h1><small>Questões interativas • progresso salvo automaticamente</small></div></div><div class="toolbar"><button id="themeToggle" class="btn small" onclick="toggleTheme()" aria-label="${dark?'Ativar modo claro':'Ativar modo escuro'}" title="${dark?'Ativar modo claro':'Ativar modo escuro'}">${dark?'☀':'☾'} <span class="label-hide">${dark?'Modo claro':'Modo escuro'}</span></button><button class="btn small danger" onclick="requestFullReset()" title="Apagar todos os seus dados e começar do zero">↻ <span class="label-hide">Restaurar</span></button></div></div></header>`;}
 
   function examProgress(e){const done=e.questions.filter(q=>qState(q).confirmed).length;return {done,total:e.questions.length,pct:e.questions.length?Math.round(done/e.questions.length*100):0};}
   function coverMarkup(e){const src=COVER_IMAGES[e.id];if(!src)return `<div class="cover"><span class="cover-tag">${escapeHTML(e.title)}</span></div>`;return `<div class="cover has-image"><img class="cover-image" src="${src}" alt="Primeira página do PDF ${escapeHTML(e.original)}" loading="lazy" /><span class="cover-tag">${escapeHTML(e.title)}</span></div>`;}
