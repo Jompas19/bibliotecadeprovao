@@ -22,7 +22,8 @@
   function mergeNote(remote,local){const a=imgs(local);return String(remote||'')+(a.length?'<div data-local-note-images="1">'+a.join('')+'</div>':'')}
   function canon(p){const o={};for(const[k,v]of Object.entries(p||{})){if(!v||typeof v!=='object')continue;const x={...v};delete x._syncUpdatedAt;o[k]=x}return JSON.stringify(o)}
   async function notes(){const o={};for(const k of await keys()){if(!k.startsWith('note:'))continue;const q=k.slice(5);o[q]={html:stripImg(await get(k)||''),updatedAt:Number(await get(NP+q)||0)}}return o}
-  async function state(){const p=await get('progress')||{},o={};for(const[q,v]of Object.entries(p)){if(v&&typeof v==='object')o[q]={...v,_syncUpdatedAt:Number(v._syncUpdatedAt||v.confirmedAt||0)}}return{progress:o,notes:await notes()}}
+  async function highlights(){const o={};for(const k of await keys()){if(!k.startsWith('highlight:'))continue;const q=k.slice(10);const v=await get(k);if(v&&typeof v==='object')o[q]={items:Array.isArray(v.items)?v.items:[],updatedAt:Number(v.updatedAt||0)}}return o}
+  async function state(){const p=await get('progress')||{},o={};for(const[q,v]of Object.entries(p)){if(v&&typeof v==='object')o[q]={...v,_syncUpdatedAt:Number(v._syncUpdatedAt||v.confirmedAt||0)}}return{progress:o,notes:await notes(),highlights:await highlights()}}
 
   async function currentResetAt(){return key?Number(await get(resetKey())||0):0}
   async function req(action,st){
@@ -40,7 +41,7 @@
     await set('progress',{});
     await set('customExams',[]);
     for(const k of await keys()){
-      if(k.startsWith('note:')||k.startsWith(NP)) await del(k);
+      if(k.startsWith('note:')||k.startsWith(NP)||k.startsWith('highlight:')) await del(k);
     }
     lastP='{}';
     lastN='{}';
@@ -79,6 +80,29 @@
       }
       await set(NP+q,Number(n?.updatedAt||0));
     }
+
+    let highlightChanged=false;
+    const remoteHighlights=st.highlights||{};
+    const localHighlightKeys=(await keys()).filter(k=>k.startsWith('highlight:'));
+    for(const k of localHighlightKeys){
+      const q=k.slice(10);
+      if(!(q in remoteHighlights)){
+        await del(k);
+        ch=true;
+        highlightChanged=true;
+      }
+    }
+    for(const[q,h]of Object.entries(remoteHighlights)){
+      const k='highlight:'+q;
+      const local=await get(k);
+      const incoming={items:Array.isArray(h?.items)?h.items:[],updatedAt:Number(h?.updatedAt||0)};
+      if(JSON.stringify(local||null)!==JSON.stringify(incoming)){
+        await set(k,incoming);
+        ch=true;
+        highlightChanged=true;
+      }
+    }
+    if(highlightChanged) window.dispatchEvent(new CustomEvent('studyHighlightsApplied'));
     return ch
   }
 
@@ -321,6 +345,7 @@
     status(key?'syncing':'local',key?'Verificando dados na nuvem…':'Somente neste dispositivo');
     frame.addEventListener('load',()=>{hook();setTimeout(hook,500);setTimeout(hook,1500)});
     window.addEventListener('online',()=>key&&syncNow({reload:true,silent:true}));
+    window.addEventListener('studyHighlightChanged',()=>key&&schedule(450));
     if(key)setTimeout(()=>syncNow({reload:true,silent:true}),600);
   }
 
