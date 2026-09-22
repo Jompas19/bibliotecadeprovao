@@ -7,7 +7,21 @@
   <title>Biblioteca de Provões</title>
 </head>
 <body>
-  <iframe id="appFrame" src="app.html" title="Biblioteca de Provões"></iframe>
-  <script src="sync.js"></script>
+  <iframe id="appFrame" title="Biblioteca de Provões"></iframe>
+  <script src="patch-exam.js"></script>
+  <script>
+    (async () => {
+      const frame = document.getElementById('appFrame');
+      try {
+        const r = await fetch('app.html?v=20260922-m4-2026', { cache: 'no-store' });
+        if (!r.ok) throw new Error('Não foi possível carregar o aplicativo.');
+        const html = await r.text();
+        frame.srcdoc = window.applyAppPatches ? window.applyAppPatches(html) : html;
+      } catch (e) {
+        document.body.innerHTML = '<p style="font:16px system-ui;padding:24px">Não foi possível carregar a biblioteca agora. Atualize a página.</p>';
+      }
+    })();
+  </script>
+  <script src="sync.js?v=20260922"></script>
 </body>
 </html>
