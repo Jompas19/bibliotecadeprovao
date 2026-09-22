@@ -5,6 +5,9 @@
     let s=String(html||'');
     if(!s.includes('"id":"m4-2026"')) s=s.replace('window.EXAM_LIBRARY = [','window.EXAM_LIBRARY = ['+JSON.stringify(NEW_EXAM)+',');
     if(!s.includes('"m4-2026":"data:image/jpeg')) s=s.replace('const COVER_IMAGES = {','const COVER_IMAGES = {"m4-2026":'+JSON.stringify(NEW_COVER)+',');
+    if(!s.includes('data-question-id="${escapeHTML(q.id)}"')) {
+      s=s.replace('return \`<article class="question-card"><div class="qmeta">','return \`<article class="question-card" data-question-id="${escapeHTML(q.id)}"><div class="qmeta">');
+    }
     return s;
   };
 })();
