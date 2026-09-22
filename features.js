@@ -110,7 +110,7 @@
       .study-pop-action.danger{color:#b42318}
       .study-feature-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;background:rgba(30,41,59,.94);color:#fff;padding:8px 12px;border-radius:9px;font:500 12.5px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:none;animation:studyFade .18s}
       @keyframes studyFade{from{opacity:0;transform:translate(-50%,6px)}}
-      :root[data-theme="dark"] .study-switch-track{background:#48566c}
+      :root[data-theme="dark"] mark.study-highlight{color:#111827}\n      :root[data-theme="dark"] .study-switch-track{background:#48566c}
       @media(max-width:760px){.study-marker-toggle{width:max-content;margin:8px 0 0 0}.exam-head{flex-wrap:wrap}.study-copy-row{justify-content:flex-start}}
     `;
     d.head.appendChild(s);
