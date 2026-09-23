@@ -111,7 +111,7 @@
       .study-pop-action.danger{color:#b42318}
       .study-feature-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;background:rgba(30,41,59,.94);color:#fff;padding:8px 12px;border-radius:9px;font:500 12.5px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:none;animation:studyFade .18s}
       @keyframes studyFade{from{opacity:0;transform:translate(-50%,6px)}}
-      .study-option-exclude{margin-left:auto;flex:0 0 auto;width:25px;height:25px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:18px;line-height:21px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:.72;transition:opacity .16s,background .16s,color .16s,border-color .16s}
+      .option{position:relative;overflow:visible}\n      .study-option-exclude{position:absolute;right:-34px;top:50%;transform:translateY(-50%);width:25px;height:25px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:18px;line-height:21px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:.72;transition:opacity .16s,background .16s,color .16s,border-color .16s;z-index:2}
       .study-option-exclude:hover{opacity:1;background:rgba(100,116,139,.09);color:var(--text)}
       .option.study-option-excluded{opacity:.72}
       .option.study-option-excluded > span:nth-child(2){text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:rgba(71,85,105,.72)}
