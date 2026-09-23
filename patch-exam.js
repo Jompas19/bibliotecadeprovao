@@ -8,6 +8,9 @@
     if(!s.includes('data-question-id="${escapeHTML(q.id)}"')) {
       s=s.replace('return \`<article class="question-card"><div class="qmeta">','return \`<article class="question-card" data-question-id="${escapeHTML(q.id)}"><div class="qmeta">');
     }
+    const oldSelectOption="function selectOption(letter){const e=currentExam(),q=filteredQuestions(e)[route.qIndex],s=qState(q);if(s.confirmed&&!retryMode)return;selectedAnswer=letter;renderExam(false);} window.selectOption=selectOption;";
+    const newSelectOption="function selectOption(letter){const e=currentExam(),q=filteredQuestions(e)[route.qIndex],s=qState(q);if(s.confirmed&&!retryMode)return;selectedAnswer=(selectedAnswer===letter?null:letter);renderExam(false);} window.selectOption=selectOption;";
+    if(s.includes(oldSelectOption))s=s.replace(oldSelectOption,newSelectOption);
     return s;
   };
 })();
