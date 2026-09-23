@@ -113,11 +113,11 @@
       @keyframes studyFade{from{opacity:0;transform:translate(-50%,6px)}}
       .study-option-exclude{margin-left:auto;flex:0 0 auto;width:25px;height:25px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:18px;line-height:21px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:.72;transition:opacity .16s,background .16s,color .16s,border-color .16s}
       .study-option-exclude:hover{opacity:1;background:rgba(100,116,139,.09);color:var(--text)}
-      .option.study-option-excluded{opacity:.58}
+      .option.study-option-excluded{opacity:.72}
       .option.study-option-excluded > span:nth-child(2){text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:rgba(71,85,105,.72)}
       .option.study-option-excluded .study-option-exclude{opacity:1;background:rgba(100,116,139,.12);color:var(--text)}
       :root[data-theme="dark"] mark.study-highlight{color:#111827}
-      :root[data-theme="dark"] .option.study-option-excluded{opacity:.64}
+      :root[data-theme="dark"] .option.study-option-excluded{opacity:.76}
       :root[data-theme="dark"] .option.study-option-excluded > span:nth-child(2){text-decoration-color:rgba(203,213,225,.78)}
       :root[data-theme="dark"] .study-option-exclude:hover{background:rgba(226,232,240,.10)}
       :root[data-theme="dark"] .option.study-option-excluded .study-option-exclude{background:rgba(226,232,240,.12)}
