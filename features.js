@@ -16,7 +16,8 @@
 
   let enabled=false;
   try{ enabled=localStorage.getItem(MODE_KEY)==='1'; }catch(_){}
-  let observer=null, enhanceTimer=null, suppressNextClick=false, popover=null;
+  let observer=null, enhanceScheduled=false, suppressNextClick=false, popover=null;
+  const excludedCache=new Map(), excludedLoads=new Map(), highlightCache=new Map();
 
   function openDb(){
     return new Promise((ok,no)=>{
@@ -50,12 +51,17 @@
   const hKey=qid=>'highlight:'+qid;
   const xKey=qid=>'excluded:'+qid;
   async function getRecord(qid){
+    if(highlightCache.has(qid))return highlightCache.get(qid);
     const v=await get(hKey(qid));
-    if(!v||typeof v!=='object')return {items:[],updatedAt:0};
-    return {items:Array.isArray(v.items)?v.items:[],updatedAt:Number(v.updatedAt||0)};
+    const rec=(!v||typeof v!=='object')
+      ?{items:[],updatedAt:0}
+      :{items:Array.isArray(v.items)?v.items:[],updatedAt:Number(v.updatedAt||0)};
+    highlightCache.set(qid,rec);
+    return rec;
   }
   async function saveRecord(qid,items){
     const rec={items,updatedAt:Date.now()};
+    highlightCache.set(qid,rec);
     await set(hKey(qid),rec);
     window.dispatchEvent(new CustomEvent('studyHighlightChanged',{detail:{questionId:qid}}));
     return rec;
@@ -153,23 +159,34 @@
   }
 
   async function getExcluded(qid){
-    const v=await get(xKey(qid));
-    return Array.isArray(v)?v.map(String):[];
+    if(excludedCache.has(qid))return excludedCache.get(qid);
+    if(excludedLoads.has(qid))return excludedLoads.get(qid);
+    const load=(async()=>{
+      const v=await get(xKey(qid));
+      const items=Array.isArray(v)?v.map(String):[];
+      excludedCache.set(qid,items);
+      excludedLoads.delete(qid);
+      return items;
+    })();
+    excludedLoads.set(qid,load);
+    return load;
   }
 
   async function setExcluded(qid,letters){
-    await set(xKey(qid),[...new Set(letters.map(String))]);
+    const items=[...new Set(letters.map(String))];
+    excludedCache.set(qid,items);
+    await set(xKey(qid),items);
   }
 
-  async function ensureOptionExcludes(){
+  function ensureOptionExcludes(){
     const d=doc(),card=qCard(); if(!d||!card)return;
     const qid=card.dataset.questionId;if(!qid)return;
-    const excluded=await getExcluded(qid);
-    const setExcludedNow=new Set(excluded);
+    const cached=excludedCache.get(qid);
+    const setExcludedNow=new Set(cached||[]);
     for(const opt of card.querySelectorAll('.option')){
       const letter=opt.querySelector('.letter')?.textContent?.trim()||'';
       if(!letter)continue;
-      opt.classList.toggle('study-option-excluded',setExcludedNow.has(letter));
+      if(cached)opt.classList.toggle('study-option-excluded',setExcludedNow.has(letter));
       let row=opt.closest('.study-option-row');
       if(!row){
         row=d.createElement('div');
@@ -192,19 +209,27 @@
           const current=await getExcluded(qid);
           const s=new Set(current);
           if(s.has(letter))s.delete(letter);else s.add(letter);
-          await setExcluded(qid,[...s]);
           const isExcluded=s.has(letter);
+          excludedCache.set(qid,[...s]);
           opt.classList.toggle('study-option-excluded',isExcluded);
           b.classList.toggle('is-excluded',isExcluded);
           b.title=isExcluded?'Restaurar alternativa':'Excluir alternativa';
           b.setAttribute('aria-label',(isExcluded?'Restaurar alternativa ':'Excluir alternativa ')+letter);
+          await setExcluded(qid,[...s]);
         });
         row.appendChild(b);
       }
-      const isExcluded=setExcludedNow.has(letter);
-      b.classList.toggle('is-excluded',isExcluded);
-      b.title=isExcluded?'Restaurar alternativa':'Excluir alternativa';
-      b.setAttribute('aria-label',(isExcluded?'Restaurar alternativa ':'Excluir alternativa ')+letter);
+      if(cached){
+        const isExcluded=setExcludedNow.has(letter);
+        b.classList.toggle('is-excluded',isExcluded);
+        b.title=isExcluded?'Restaurar alternativa':'Excluir alternativa';
+        b.setAttribute('aria-label',(isExcluded?'Restaurar alternativa ':'Excluir alternativa ')+letter);
+      }
+    }
+    if(!cached&&!excludedLoads.has(qid)){
+      getExcluded(qid).then(()=>{
+        if(qCard()?.dataset.questionId===qid)ensureOptionExcludes();
+      });
     }
   }
 
@@ -380,10 +405,16 @@
   }
 
   function scheduleEnhance(){
-    clearTimeout(enhanceTimer);
-    enhanceTimer=setTimeout(async()=>{
-      injectStyle();ensureToggle();ensureCopy();await ensureOptionExcludes();await applyHighlights(false);
-    },35);
+    if(enhanceScheduled)return;
+    enhanceScheduled=true;
+    queueMicrotask(()=>{
+      enhanceScheduled=false;
+      injectStyle();
+      ensureToggle();
+      ensureCopy();
+      ensureOptionExcludes();
+      applyHighlights(false);
+    });
   }
 
   function attach(){
