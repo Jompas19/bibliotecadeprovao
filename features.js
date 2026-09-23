@@ -48,6 +48,7 @@
   }
 
   const hKey=qid=>'highlight:'+qid;
+  const xKey=qid=>'excluded:'+qid;
   async function getRecord(qid){
     const v=await get(hKey(qid));
     if(!v||typeof v!=='object')return {items:[],updatedAt:0};
@@ -110,7 +111,17 @@
       .study-pop-action.danger{color:#b42318}
       .study-feature-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;background:rgba(30,41,59,.94);color:#fff;padding:8px 12px;border-radius:9px;font:500 12.5px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:none;animation:studyFade .18s}
       @keyframes studyFade{from{opacity:0;transform:translate(-50%,6px)}}
-      :root[data-theme="dark"] mark.study-highlight{color:#111827}\n      :root[data-theme="dark"] .study-switch-track{background:#48566c}
+      .study-option-exclude{margin-left:auto;flex:0 0 auto;width:25px;height:25px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:18px;line-height:21px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:.72;transition:opacity .16s,background .16s,color .16s,border-color .16s}
+      .study-option-exclude:hover{opacity:1;background:rgba(100,116,139,.09);color:var(--text)}
+      .option.study-option-excluded{opacity:.58}
+      .option.study-option-excluded > span:nth-child(2){text-decoration:line-through;text-decoration-thickness:1.5px;text-decoration-color:rgba(71,85,105,.72)}
+      .option.study-option-excluded .study-option-exclude{opacity:1;background:rgba(100,116,139,.12);color:var(--text)}
+      :root[data-theme="dark"] mark.study-highlight{color:#111827}
+      :root[data-theme="dark"] .option.study-option-excluded{opacity:.64}
+      :root[data-theme="dark"] .option.study-option-excluded > span:nth-child(2){text-decoration-color:rgba(203,213,225,.78)}
+      :root[data-theme="dark"] .study-option-exclude:hover{background:rgba(226,232,240,.10)}
+      :root[data-theme="dark"] .option.study-option-excluded .study-option-exclude{background:rgba(226,232,240,.12)}
+      :root[data-theme="dark"] .study-switch-track{background:#48566c}
       @media(max-width:760px){.study-marker-toggle{width:max-content;margin:8px 0 0 0}.exam-head{flex-wrap:wrap}.study-copy-row{justify-content:flex-start}}
     `;
     d.head.appendChild(s);
@@ -136,6 +147,51 @@
       if(!enabled) closePopover();
     });
     head.appendChild(box);
+  }
+
+  async function getExcluded(qid){
+    const v=await get(xKey(qid));
+    return Array.isArray(v)?v.map(String):[];
+  }
+
+  async function setExcluded(qid,letters){
+    await set(xKey(qid),[...new Set(letters.map(String))]);
+  }
+
+  async function ensureOptionExcludes(){
+    const d=doc(),card=qCard(); if(!d||!card)return;
+    const qid=card.dataset.questionId;if(!qid)return;
+    const excluded=await getExcluded(qid);
+    const setExcludedNow=new Set(excluded);
+    for(const opt of card.querySelectorAll('.option')){
+      const letter=opt.querySelector('.letter')?.textContent?.trim()||'';
+      if(!letter)continue;
+      opt.classList.toggle('study-option-excluded',setExcludedNow.has(letter));
+      let b=opt.querySelector('.study-option-exclude');
+      if(!b){
+        b=d.createElement('button');
+        b.type='button';
+        b.className='study-option-exclude';
+        b.textContent='×';
+        b.title='Excluir alternativa';
+        b.setAttribute('aria-label','Excluir alternativa '+letter);
+        b.addEventListener('click',async e=>{
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          const current=await getExcluded(qid);
+          const s=new Set(current);
+          if(s.has(letter))s.delete(letter);else s.add(letter);
+          await setExcluded(qid,[...s]);
+          opt.classList.toggle('study-option-excluded',s.has(letter));
+          b.title=s.has(letter)?'Restaurar alternativa':'Excluir alternativa';
+          b.setAttribute('aria-label',(s.has(letter)?'Restaurar alternativa ':'Excluir alternativa ')+letter);
+        });
+        opt.appendChild(b);
+      }
+      b.title=setExcludedNow.has(letter)?'Restaurar alternativa':'Excluir alternativa';
+      b.setAttribute('aria-label',(setExcludedNow.has(letter)?'Restaurar alternativa ':'Excluir alternativa ')+letter);
+    }
   }
 
   function ensureCopy(){
@@ -312,7 +368,7 @@
   function scheduleEnhance(){
     clearTimeout(enhanceTimer);
     enhanceTimer=setTimeout(async()=>{
-      injectStyle();ensureToggle();ensureCopy();await applyHighlights(false);
+      injectStyle();ensureToggle();ensureCopy();await ensureOptionExcludes();await applyHighlights(false);
     },35);
   }
 
