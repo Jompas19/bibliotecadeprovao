@@ -5,7 +5,7 @@
   const DB='QuestoesInterativasDB', STORE='kv', LP='QuestoesInterativasDB:', SK='syncKey', NP='noteUpdated:';
   const resetKey=()=>key?'syncResetAt:'+key:'';
 
-  let frame,key='',busy=false,timer=null,noteTimer=null,lastP='{}',lastN='{}';
+  let frame,key='',busy=false,timer=null,noteTimer=null,lastP='{}',lastN='{}',themeObserver=null;
 
   const esc=(s='')=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const norm=s=>String(s||'').trim().toLowerCase();
@@ -307,11 +307,25 @@
     }
   }
 
+  function syncOuterTheme(){
+    const root=frame?.contentDocument?.documentElement;
+    if(!root)return;
+    const apply=()=>{
+      const theme=root.dataset.theme==='dark'?'dark':'light';
+      document.documentElement.dataset.appTheme=theme;
+    };
+    apply();
+    themeObserver?.disconnect();
+    themeObserver=new MutationObserver(apply);
+    themeObserver.observe(root,{attributes:true,attributeFilter:['data-theme']});
+  }
+
   function ui(){
     const s=document.createElement('style');
     s.textContent=`html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#eef2f7}
 #appFrame{border:0;width:100%;height:100%;display:block;background:#fff}
 .cloud-float{position:fixed;right:18px;bottom:18px;z-index:1000;border:1px solid rgba(18,35,64,.16);background:#fff;color:#1c2a3d;border-radius:999px;padding:10px 14px;box-shadow:0 8px 28px rgba(24,42,70,.18);font:600 13px system-ui;cursor:pointer;display:flex;align-items:center;gap:8px}
+html[data-app-theme="dark"] .cloud-float{background:#1f2937;color:#e5e7eb;border-color:rgba(226,232,240,.16);box-shadow:0 8px 28px rgba(0,0,0,.28)}
 .cloud-dot{width:9px;height:9px;border-radius:50%;background:#9aa5b4}
 .cloud-dot[data-state=ok]{background:#159a5b}
 .cloud-dot[data-state=syncing]{background:#d69a00}
@@ -339,11 +353,12 @@
   async function init(){
     ui();
     frame=document.getElementById('appFrame');
+    syncOuterTheme();
     key=norm(await get(SK)||'');
     lastP=canon(await get('progress')||{});
     lastN=JSON.stringify(await notes());
     status(key?'syncing':'local',key?'Verificando dados na nuvem…':'Somente neste dispositivo');
-    frame.addEventListener('load',()=>{hook();setTimeout(hook,500);setTimeout(hook,1500)});
+    frame.addEventListener('load',()=>{syncOuterTheme();hook();setTimeout(hook,500);setTimeout(hook,1500)});
     window.addEventListener('online',()=>key&&syncNow({reload:true,silent:true}));
     window.addEventListener('studyHighlightChanged',()=>key&&schedule(450));
     if(key)setTimeout(()=>syncNow({reload:true,silent:true}),600);
