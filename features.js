@@ -6,6 +6,7 @@
 
   const DB='QuestoesInterativasDB', STORE='kv', LP='QuestoesInterativasDB:';
   const MODE_KEY='studyHighlighterEnabled';
+  const M3_WARNING_KEY='studyExamWarningDismissed:m3-2021:v1';
   const COLORS={
     yellow:'#fff1a8',
     green:'#d7f0d3',
@@ -116,6 +117,18 @@
       .study-pop-action{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer}
       .study-pop-action.danger{color:#b42318}
       .study-feature-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;background:rgba(30,41,59,.94);color:#fff;padding:8px 12px;border-radius:9px;font:500 12.5px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:none;animation:studyFade .18s}
+      .study-exam-warning-bg{position:fixed;inset:0;z-index:20000;background:rgba(15,23,42,.64);display:grid;place-items:center;padding:20px;box-sizing:border-box;backdrop-filter:blur(3px)}
+      .study-exam-warning-card{width:min(560px,100%);box-sizing:border-box;background:#fff;color:#172033;border:1px solid #fed7aa;border-top:5px solid #f97316;border-radius:18px;padding:24px;box-shadow:0 28px 80px rgba(15,23,42,.30);text-align:center}
+      .study-exam-warning-icon{width:54px;height:54px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:#fff7ed;color:#c2410c;font-size:29px;font-weight:800;border:1px solid #fed7aa}
+      .study-exam-warning-card h2{margin:0 0 10px;font-size:22px;color:#9a3412}
+      .study-exam-warning-card p{margin:0 auto 20px;max-width:470px;font-size:16px;line-height:1.55;font-weight:650;color:#334155}
+      .study-exam-warning-btn{width:100%;border:0;border-radius:12px;padding:12px 16px;background:#c2410c;color:#fff;font:700 14px system-ui;cursor:pointer;box-shadow:0 5px 14px rgba(194,65,12,.22)}
+      .study-exam-warning-btn:hover{background:#9a3412}
+      .study-exam-warning-btn:focus-visible{outline:3px solid rgba(249,115,22,.32);outline-offset:3px}
+      body.dark .study-exam-warning-card,:root[data-theme="dark"] .study-exam-warning-card{background:#1f2937;color:#f8fafc;border-color:#7c2d12;border-top-color:#fb923c;box-shadow:0 28px 80px rgba(0,0,0,.48)}
+      body.dark .study-exam-warning-icon,:root[data-theme="dark"] .study-exam-warning-icon{background:#431407;color:#fdba74;border-color:#9a3412}
+      body.dark .study-exam-warning-card h2,:root[data-theme="dark"] .study-exam-warning-card h2{color:#fdba74}
+      body.dark .study-exam-warning-card p,:root[data-theme="dark"] .study-exam-warning-card p{color:#e2e8f0}
       @keyframes studyFade{from{opacity:0;transform:translate(-50%,6px)}}
       .study-option-row{display:grid;grid-template-columns:minmax(0,1fr) 25px;gap:24px;align-items:center}
       .study-option-row .option{width:100%;box-sizing:border-box}
@@ -134,6 +147,46 @@
       @media(max-width:760px){.study-marker-toggle{width:max-content;margin:8px 0 0 0}.exam-head{flex-wrap:wrap}.study-copy-row{justify-content:flex-start}}
     `;
     d.head.appendChild(s);
+  }
+
+  function warningDismissed(){
+    try{return localStorage.getItem(M3_WARNING_KEY)==='1'}catch(_){return false}
+  }
+
+  function showM3Warning(continueOpen){
+    const d=doc();if(!d)return continueOpen();
+    d.getElementById('studyM3Warning')?.remove();
+    const bg=d.createElement('div');
+    bg.id='studyM3Warning';
+    bg.className='study-exam-warning-bg';
+    bg.setAttribute('role','dialog');
+    bg.setAttribute('aria-modal','true');
+    bg.setAttribute('aria-labelledby','studyM3WarningTitle');
+    bg.innerHTML='<div class="study-exam-warning-card"><div class="study-exam-warning-icon" aria-hidden="true">⚠</div><h2 id="studyM3WarningTitle">Atenção!</h2><p>Essa prova possui divergências entre gabarito marcado pelo PDF e Chat. Não confie e confira a resposta.</p><button type="button" class="study-exam-warning-btn">Entendido! Não mostrar o aviso novamente</button></div>';
+    const b=bg.querySelector('.study-exam-warning-btn');
+    b.addEventListener('click',()=>{
+      try{localStorage.setItem(M3_WARNING_KEY,'1')}catch(_){}
+      bg.remove();
+      continueOpen();
+    });
+    d.body.appendChild(bg);
+    requestAnimationFrame(()=>b.focus());
+  }
+
+  function hookExamWarning(){
+    const w=frame.contentWindow;if(!w)return;
+    const original=w.openExam;
+    if(typeof original!=='function'||original.__studyM3Warning)return;
+    const wrapped=function(id,...args){
+      if(id==='m3-2021'&&!warningDismissed()){
+        showM3Warning(()=>original.call(this,id,...args));
+        return;
+      }
+      return original.call(this,id,...args);
+    };
+    wrapped.__studyM3Warning=true;
+    wrapped.__studyM3WarningOriginal=original;
+    w.openExam=wrapped;
   }
 
   function ensureToggle(){
@@ -420,7 +473,7 @@
   function attach(){
     const d=doc();if(!d)return;
     observer?.disconnect();
-    injectStyle();scheduleEnhance();
+    injectStyle();hookExamWarning();scheduleEnhance();
     observer=new MutationObserver(scheduleEnhance);
     observer.observe(d.body,{childList:true,subtree:true});
 
