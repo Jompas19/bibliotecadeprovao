@@ -49,23 +49,42 @@
     try{localStorage.setItem(LP+k,JSON.stringify(v))}catch(_){}
   }
 
-  const hKey=qid=>'highlight:'+qid;
-  const xKey=qid=>'excluded:'+qid;
+  const REVIEW_FILTERS=new Set(['correct','wrong','doubt','guess']);
+  function activeFilter(){
+    const b=doc()?.querySelector('.filter.active');
+    const raw=b?.getAttribute('onclick')||'';
+    const m=raw.match(/setFilter\(['"]([^'"]+)['"]\)/);
+    return m?.[1]||'all';
+  }
+  function isCategoryReview(){return REVIEW_FILTERS.has(activeFilter())}
+  const hKey=qid=>isCategoryReview()?'reviewHighlight:'+qid:'highlight:'+qid;
+  const xKey=qid=>isCategoryReview()?'reviewExcluded:'+qid:'excluded:'+qid;
   async function getRecord(qid){
-    if(highlightCache.has(qid))return highlightCache.get(qid);
-    const v=await get(hKey(qid));
+    const k=hKey(qid);
+    if(highlightCache.has(k))return highlightCache.get(k);
+    const v=await get(k);
     const rec=(!v||typeof v!=='object')
       ?{items:[],updatedAt:0}
       :{items:Array.isArray(v.items)?v.items:[],updatedAt:Number(v.updatedAt||0)};
-    highlightCache.set(qid,rec);
+    highlightCache.set(k,rec);
     return rec;
   }
   async function saveRecord(qid,items){
+    const k=hKey(qid);
     const rec={items,updatedAt:Date.now()};
-    highlightCache.set(qid,rec);
-    await set(hKey(qid),rec);
-    window.dispatchEvent(new CustomEvent('studyHighlightChanged',{detail:{questionId:qid}}));
+    highlightCache.set(k,rec);
+    await set(k,rec);
+    if(k.startsWith('highlight:'))window.dispatchEvent(new CustomEvent('studyHighlightChanged',{detail:{questionId:qid}}));
     return rec;
+  }
+  async function clearCategoryStudyData(qid){
+    if(!qid)return;
+    const hk='reviewHighlight:'+qid, xk='reviewExcluded:'+qid;
+    const rec={items:[],updatedAt:Date.now()};
+    highlightCache.set(hk,rec);
+    excludedCache.set(xk,[]);
+    excludedLoads.delete(xk);
+    await Promise.all([set(hk,rec),set(xk,[])]);
   }
 
   function doc(){return frame.contentDocument}
@@ -212,29 +231,32 @@
   }
 
   async function getExcluded(qid){
-    if(excludedCache.has(qid))return excludedCache.get(qid);
-    if(excludedLoads.has(qid))return excludedLoads.get(qid);
+    const k=xKey(qid);
+    if(excludedCache.has(k))return excludedCache.get(k);
+    if(excludedLoads.has(k))return excludedLoads.get(k);
     const load=(async()=>{
-      const v=await get(xKey(qid));
+      const v=await get(k);
       const items=Array.isArray(v)?v.map(String):[];
-      excludedCache.set(qid,items);
-      excludedLoads.delete(qid);
+      excludedCache.set(k,items);
+      excludedLoads.delete(k);
       return items;
     })();
-    excludedLoads.set(qid,load);
+    excludedLoads.set(k,load);
     return load;
   }
 
   async function setExcluded(qid,letters){
+    const k=xKey(qid);
     const items=[...new Set(letters.map(String))];
-    excludedCache.set(qid,items);
-    await set(xKey(qid),items);
+    excludedCache.set(k,items);
+    await set(k,items);
   }
 
   function ensureOptionExcludes(){
     const d=doc(),card=qCard(); if(!d||!card)return;
     const qid=card.dataset.questionId;if(!qid)return;
-    const cached=excludedCache.get(qid);
+    const storageKey=xKey(qid);
+    const cached=excludedCache.get(storageKey);
     const setExcludedNow=new Set(cached||[]);
     for(const opt of card.querySelectorAll('.option')){
       const letter=opt.querySelector('.letter')?.textContent?.trim()||'';
@@ -263,7 +285,7 @@
           const s=new Set(current);
           if(s.has(letter))s.delete(letter);else s.add(letter);
           const isExcluded=s.has(letter);
-          excludedCache.set(qid,[...s]);
+          excludedCache.set(xKey(qid),[...s]);
           opt.classList.toggle('study-option-excluded',isExcluded);
           b.classList.toggle('is-excluded',isExcluded);
           b.title=isExcluded?'Restaurar alternativa':'Excluir alternativa';
@@ -279,7 +301,7 @@
         b.setAttribute('aria-label',(isExcluded?'Restaurar alternativa ':'Excluir alternativa ')+letter);
       }
     }
-    if(!cached&&!excludedLoads.has(qid)){
+    if(!cached&&!excludedLoads.has(storageKey)){
       getExcluded(qid).then(()=>{
         if(qCard()?.dataset.questionId===qid)ensureOptionExcludes();
       });
@@ -480,6 +502,11 @@
     d.addEventListener('mouseup',()=>setTimeout(highlightSelection,0),true);
     d.addEventListener('touchend',()=>setTimeout(highlightSelection,0),true);
     d.addEventListener('click',e=>{
+      const statusBtn=e.target?.closest?.('.status-btn');
+      if(statusBtn){
+        const qid=qCard()?.dataset.questionId;
+        if(qid)clearCategoryStudyData(qid);
+      }
       const mark=e.target?.closest?.('mark.study-highlight');
       if(mark){e.preventDefault();e.stopImmediatePropagation();openPopover(mark);return}
       if(suppressNextClick){e.preventDefault();e.stopImmediatePropagation();suppressNextClick=false;return}
