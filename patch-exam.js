@@ -15,6 +15,9 @@
     const oldSelectOption="function selectOption(letter){const e=currentExam(),q=filteredQuestions(e)[route.qIndex],s=qState(q);if(s.confirmed&&!retryMode)return;selectedAnswer=letter;renderExam(false);} window.selectOption=selectOption;";
     const newSelectOption="function selectOption(letter){const e=currentExam(),q=filteredQuestions(e)[route.qIndex],s=qState(q);if(s.confirmed&&!retryMode)return;selectedAnswer=(selectedAnswer===letter?null:letter);renderExam(false);} window.selectOption=selectOption;";
     if(s.includes(oldSelectOption))s=s.replace(oldSelectOption,newSelectOption);
+    const oldSetStatus="async function setStatus(st){const e=currentExam(),q=filteredQuestions(e)[route.qIndex],s=qState(q);s.status=(s.status===st?null:st);progress[q.id]=s;await persist();renderExam(false);} window.setStatus=setStatus;";
+    const newSetStatus="async function setStatus(st){const e=currentExam(),q=filteredQuestions(e)[route.qIndex],s=qState(q);s.status=(s.status===st?null:st);progress[q.id]=s;await persist();if(isReviewFilter()&&s.status!==route.filter){selectedAnswer=null;answerVisible=false;retryMode=true;renderExam();}else{renderExam(false);}} window.setStatus=setStatus;";
+    if(s.includes(oldSetStatus))s=s.replace(oldSetStatus,newSetStatus);
     return s;
   };
 })();
