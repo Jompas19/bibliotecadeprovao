@@ -114,7 +114,9 @@
     s=patchExamAnswerKey(s,'m3-2022-2',M3_2022_2_KEY);
     s=patchM3_2022_2QuestionMedia(s);
     if(!s.includes('"id":"m4-2026"')) s=s.replace('window.EXAM_LIBRARY = [','window.EXAM_LIBRARY = ['+JSON.stringify(NEW_EXAM)+',');
+    if(window.COMPILADO_NOVO_EXAM&&!s.includes('"id":"compilado-novo"')) s=s.replace('window.EXAM_LIBRARY = [','window.EXAM_LIBRARY = ['+JSON.stringify(window.COMPILADO_NOVO_EXAM)+',');
     if(!s.includes('"m4-2026":"data:image/jpeg')) s=s.replace('const COVER_IMAGES = {','const COVER_IMAGES = {"m4-2026":'+JSON.stringify(NEW_COVER)+',');
+    if(window.COMPILADO_NOVO_COVER&&!s.includes('"compilado-novo":')) s=s.replace('const COVER_IMAGES = {','const COVER_IMAGES = {"compilado-novo":'+JSON.stringify(window.COMPILADO_NOVO_COVER)+',');
     if(!s.includes('data-question-id="${escapeHTML(q.id)}"')) {
       s=s.replace('return \`<article class="question-card"><div class="qmeta">','return \`<article class="question-card" data-question-id="${escapeHTML(q.id)}"><div class="qmeta">');
     }
