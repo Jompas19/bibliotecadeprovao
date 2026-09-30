@@ -63,26 +63,43 @@
     try{
       const exam=JSON.parse(html.slice(start,end));
       if(!Array.isArray(exam.questions))return html;
+
       const q37=exam.questions.find(q=>Number(q.number)===37);
       const q38=exam.questions.find(q=>Number(q.number)===38);
       const q40=exam.questions.find(q=>Number(q.number)===40);
 
-      if(q37&&q38){
-        const existing38=Array.isArray(q38.images)?q38.images:[];
-        const mri=(Array.isArray(q37.images)&&q37.images[0])
-          ||existing38.find(x=>String(x||'').startsWith('data:image'))
-          ||null;
+      // A RNM foi importada originalmente na questão 37, mas pertence ao caso da questão 38.
+      const mri=(q37&&Array.isArray(q37.images)&&q37.images.find(x=>String(x||'').startsWith('data:image')))
+        ||(q38&&Array.isArray(q38.images)&&q38.images.find(x=>String(x||'').startsWith('data:image')))
+        ||null;
+
+      if(q37){
         delete q37.images;
-        const extra38=existing38.filter(x=>x!==mri&&x!=='m3-2022-2-q38-histology.webp');
-        q38.images=[...(mri?[mri]:[]),...extra38,'m3-2022-2-q38-histology.webp'];
+      }
+
+      if(q38){
+        q38.prompt='Criança de 5 anos de idade apresenta há um mês cefaleias matinais, náuseas, vômitos, diplopia e ataxia. O exame de Ressonância Nuclear Magnética (RNM) revela grande lesão em fossa posterior.\n\nFoi realizada a ressecção cirúrgica da lesão, que revelou a seguinte histologia.\n\nO estudo imuno-histoquímico complementar revelou positividade para Sinaptofisina, INI1 e NeuN, e negatividade para CD45 e GFAP.\n\nBaseado no caso clínico apresentado, marque a alternativa correta:';
+        q38.options=[
+          {letter:'A',text:'Representa um tumor primário cerebral grau I da OMS.'},
+          {letter:'B',text:'Representa um tumor primário cerebral grau II da OMS.'},
+          {letter:'C',text:'Representa um tumor primário cerebral grau III da OMS.'},
+          {letter:'D',text:'Representa um tumor primário cerebral grau IV da OMS.'}
+        ];
+        q38.images=[...(mri?[mri]:[]),'m3-2022-2-q38-histology.webp'];
         q38.page=7;
       }
 
       if(q40){
-        const existing40=Array.isArray(q40.images)?q40.images:[];
-        const fundus=existing40.find(x=>String(x||'').startsWith('data:image'))||existing40[0]||null;
-        const extra40=existing40.filter(x=>x!==fundus&&x!=='m3-2022-2-q40-pathology.webp');
-        q40.images=[...(fundus?[fundus]:[]),...extra40,'m3-2022-2-q40-pathology.webp'];
+        const fundus=(Array.isArray(q40.images)&&q40.images.find(x=>String(x||'').startsWith('data:image')))||null;
+        q40.prompt='Homem de 67 anos de idade apresenta perda da acuidade visual progressiva em olho esquerdo há 4 meses. Foi realizado fundoscopia.\n\nFotografia do fundo de olho: olho direito (OD) fundo normal; olho esquerdo (OE) infiltrações profundas da retina perto da arcada vascular temporal inferior, edema macular, vitrite.\n\nApós estadiamento, que não identificou lesões em outros sítios, foi realizado vitrectomia e material avaliado no serviço de Anatomia Patológica.\n\nAmostras com coloração de Papanicolaou x 600 (A) e coloração de CD20 x 600 (B) demonstrando numerosas células grandes positivas para CD20 com nucléolos proeminentes variáveis.\n\nBaseado no caso clínico apresentado, marque a alternativa correta:';
+        q40.options=[
+          {letter:'A',text:'O diagnóstico é de melanoma uveal posterior.'},
+          {letter:'B',text:'Esta é uma neoplasia indolente, representando a principal neoplasia primária intraocular em adultos.'},
+          {letter:'C',text:'Esta é uma neoplasia que geralmente apresenta metástase hematogênica, principalmente para pulmões e fígado.'},
+          {letter:'D',text:'Representa neoplasia linfoide de alto grau primária de sítio imunoprivilegiado.'}
+        ];
+        q40.images=[...(fundus?[fundus]:[]),'m3-2022-2-q40-pathology.webp'];
+        q40.page=8;
       }
 
       return html.slice(0,start)+JSON.stringify(exam)+html.slice(end);
