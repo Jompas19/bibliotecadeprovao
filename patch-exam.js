@@ -85,7 +85,7 @@
           {letter:'C',text:'Representa um tumor primário cerebral grau III da OMS.'},
           {letter:'D',text:'Representa um tumor primário cerebral grau IV da OMS.'}
         ];
-        q38.images=[...(mri?[mri]:[]),'m3-2022-2-q38-histology.webp'];
+        q38.images=[...(mri?[mri]:[]),new URL('m3-2022-2-q38-histology.webp?v=20260930-3',window.location.href).href];
         q38.page=7;
       }
 
@@ -98,7 +98,7 @@
           {letter:'C',text:'Esta é uma neoplasia que geralmente apresenta metástase hematogênica, principalmente para pulmões e fígado.'},
           {letter:'D',text:'Representa neoplasia linfoide de alto grau primária de sítio imunoprivilegiado.'}
         ];
-        q40.images=[...(fundus?[fundus]:[]),'m3-2022-2-q40-pathology.webp'];
+        q40.images=[...(fundus?[fundus]:[]),new URL('m3-2022-2-q40-pathology.webp?v=20260930-3',window.location.href).href];
         q40.page=8;
       }
 
