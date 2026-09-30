@@ -39,10 +39,63 @@
     }
   }
 
+  function patchM3_2022_2QuestionMedia(html){
+    const marker='"id":"m3-2022-2"';
+    const markerAt=html.indexOf(marker);
+    if(markerAt<0)return html;
+    let start=html.lastIndexOf('{',markerAt),depth=0,inString=false,escaped=false,end=-1;
+    for(let i=start;i<html.length;i++){
+      const ch=html[i];
+      if(inString){
+        if(escaped)escaped=false;
+        else if(ch==='\\')escaped=true;
+        else if(ch==='"')inString=false;
+      }else{
+        if(ch==='"')inString=true;
+        else if(ch==='{')depth++;
+        else if(ch==='}'){
+          depth--;
+          if(depth===0){end=i+1;break}
+        }
+      }
+    }
+    if(start<0||end<0)return html;
+    try{
+      const exam=JSON.parse(html.slice(start,end));
+      if(!Array.isArray(exam.questions))return html;
+      const q37=exam.questions.find(q=>Number(q.number)===37);
+      const q38=exam.questions.find(q=>Number(q.number)===38);
+      const q40=exam.questions.find(q=>Number(q.number)===40);
+
+      if(q37&&q38){
+        const existing38=Array.isArray(q38.images)?q38.images:[];
+        const mri=(Array.isArray(q37.images)&&q37.images[0])
+          ||existing38.find(x=>String(x||'').startsWith('data:image'))
+          ||null;
+        delete q37.images;
+        const extra38=existing38.filter(x=>x!==mri&&x!=='m3-2022-2-q38-histology.webp');
+        q38.images=[...(mri?[mri]:[]),...extra38,'m3-2022-2-q38-histology.webp'];
+        q38.page=7;
+      }
+
+      if(q40){
+        const existing40=Array.isArray(q40.images)?q40.images:[];
+        const fundus=existing40.find(x=>String(x||'').startsWith('data:image'))||existing40[0]||null;
+        const extra40=existing40.filter(x=>x!==fundus&&x!=='m3-2022-2-q40-pathology.webp');
+        q40.images=[...(fundus?[fundus]:[]),...extra40,'m3-2022-2-q40-pathology.webp'];
+      }
+
+      return html.slice(0,start)+JSON.stringify(exam)+html.slice(end);
+    }catch(_){
+      return html;
+    }
+  }
+
   const NEW_COVER="cover-m4-2026.jpg";
   window.applyAppPatches=function(html){
     let s=String(html||'');
     s=patchExamAnswerKey(s,'m3-2022-2',M3_2022_2_KEY);
+    s=patchM3_2022_2QuestionMedia(s);
     if(!s.includes('"id":"m4-2026"')) s=s.replace('window.EXAM_LIBRARY = [','window.EXAM_LIBRARY = ['+JSON.stringify(NEW_EXAM)+',');
     if(!s.includes('"m4-2026":"data:image/jpeg')) s=s.replace('const COVER_IMAGES = {','const COVER_IMAGES = {"m4-2026":'+JSON.stringify(NEW_COVER)+',');
     if(!s.includes('data-question-id="${escapeHTML(q.id)}"')) {
