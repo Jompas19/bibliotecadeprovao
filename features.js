@@ -7,6 +7,7 @@
   const DB='QuestoesInterativasDB', STORE='kv', LP='QuestoesInterativasDB:';
   const MODE_KEY='studyHighlighterEnabled';
   const M3_WARNING_KEY='studyExamWarningDismissed:m3-2021:v1';
+  const COMPILADO1_WARNING_KEY='studyExamWarningDismissed:compilado-1:v1';
   const COLORS={
     yellow:'#fff1a8',
     green:'#d7f0d3',
@@ -168,11 +169,11 @@
     d.head.appendChild(s);
   }
 
-  function warningDismissed(){
-    try{return localStorage.getItem(M3_WARNING_KEY)==='1'}catch(_){return false}
+  function warningDismissed(storageKey=M3_WARNING_KEY){
+    try{return localStorage.getItem(storageKey)==='1'}catch(_){return false}
   }
 
-  function showM3Warning(continueOpen){
+  function showM3Warning(continueOpen,storageKey=M3_WARNING_KEY){
     const d=doc();if(!d)return continueOpen();
     d.getElementById('studyM3Warning')?.remove();
     const bg=d.createElement('div');
@@ -184,7 +185,7 @@
     bg.innerHTML='<div class="study-exam-warning-card"><div class="study-exam-warning-icon" aria-hidden="true">⚠</div><h2 id="studyM3WarningTitle">Atenção!</h2><p>Essa prova possui divergências entre gabarito marcado pelo PDF e Chat. Não confie e confira a resposta.</p><button type="button" class="study-exam-warning-btn">Entendido! Não mostrar o aviso novamente</button></div>';
     const b=bg.querySelector('.study-exam-warning-btn');
     b.addEventListener('click',()=>{
-      try{localStorage.setItem(M3_WARNING_KEY,'1')}catch(_){}
+      try{localStorage.setItem(storageKey,'1')}catch(_){}
       bg.remove();
       continueOpen();
     });
@@ -197,8 +198,13 @@
     const original=w.openExam;
     if(typeof original!=='function'||original.__studyM3Warning)return;
     const wrapped=function(id,...args){
-      if(id==='m3-2021'&&!warningDismissed()){
-        showM3Warning(()=>original.call(this,id,...args));
+      const warningKey=id==='m3-2021'
+        ?M3_WARNING_KEY
+        :id==='compilado-1'
+          ?COMPILADO1_WARNING_KEY
+          :null;
+      if(warningKey&&!warningDismissed(warningKey)){
+        showM3Warning(()=>original.call(this,id,...args),warningKey);
         return;
       }
       return original.call(this,id,...args);
